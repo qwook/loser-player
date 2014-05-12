@@ -4,6 +4,8 @@ class Graphics
     document.body.appendChild(@canvas.element)
     @context = @canvas.context
 
+    @canvas.element.id = "main"
+
     @default_canvas = @canvas
     @default_context = @context
     @default_font = new Font("Vera", 12)
@@ -13,7 +15,6 @@ class Graphics
     @setBackgroundColor(0, 0, 0)
     @setFont(@default_font)
     @context.textBaseline = "bottom"
-    # @context.imageSmoothingEnabled = false
 
   # DRAWING
   arc: (mode, x, y, radius, startAngle, endAngle, segments) =>
@@ -138,6 +139,7 @@ class Graphics
   origin: () =>
     @context.setTransform(1,0,0,1,0,0)
 
+
   pop: () =>
     @context.restore()
 
@@ -158,10 +160,10 @@ class Graphics
 
   # WINDOW
   getWidth: () =>
-    @default_canvas.width
+    @default_canvas.getWidth(@default_canvas)
 
   getHeight: () =>
-    @default_canvas.height
+    @default_canvas.getHeight(@default_canvas)
 
   # PRIVATE
   drawDrawable = (drawable, x = 0, y = 0, r = 0, sx = 1, sy = sx, ox = 0, oy = 0, kx = 0, ky = 0) ->

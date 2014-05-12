@@ -22,10 +22,10 @@ class Canvas
     self.context.restore()
 
   getDimensions: (self) ->
-    [self.width, self.height]
+    [self.getHeight(self), self.getWidth(self)]
 
   getHeight: (self) ->
-    self.height
+    self.element.height
 
   getImageData: (self) ->
     image_data = self.context.getImageData(0, 0, self.width, self.height)
@@ -36,7 +36,7 @@ class Canvas
     [data[0], data[1], data[2], data[3]]
 
   getWidth: (self) ->
-    self.width
+    self.element.width
 
   # TODO: wrapping also applies to textures and quads
   getWrap: (self) ->
@@ -67,7 +67,14 @@ class Canvas
     @context.textBaseline = context.textBaseline
 
   setDimensions: (@width, @height) ->
-    @element.setAttribute('width', width + "px")
-    @element.setAttribute('height', height + "px")
+    if !isNaN(@width, @height)
+      @element.setAttribute('width', width + "px")
+      @element.setAttribute('height', height + "px")
+
+  getDesiredHeight: () ->
+    @height
+
+  getDesiredWidth: () ->
+    @width
 
 Canvas.transparent = new Color(0, 0, 0, 0)

@@ -1,27 +1,58 @@
 <!doctype html>
 <html>
-<head><meta charset="utf-8" />
-  <script src="./js/moonshine.js"></script>
-  <script src="./js/debug/debug.moonshine.js"></script>
-  <script src="./js/debug/local.debug.moonshine.js" data-ui-url="/js/debug/ui"></script>
-  <script src="./js/love.js"></script>
+<head>
+  <meta charset="utf-8" />
+  <meta content='text/html; charset=UTF-8' http-equiv='Content-Type'/>
+  <meta name="twitter:card" content="player">
+  <meta name="twitter:site" content="@loserplayer">
+  <meta name="twitter:title" content="Play Djarlum">
+  <meta name="twitter:description" content="Controls: arrow keys to move, space to shoot/start">
+  <meta name="twitter:image" content="http://loser.land/loser-player/screenshot.png">
+  <meta name="twitter:player" content="http://loser.land/loser-player/container.html">
+  <meta name="twitter:player:width" content="435">
+  <meta name="twitter:player:height" content="435">
   <style type="text/css">
-    img {
-      display: none;
+    body {
+      font-family: sans-serif;
     }
-
-    @font-face {
-      font-family: 'Vera';
-      src: url('coffeescript/love.js/graphics/Vera.ttf');
+    iframe {
+      border: 0;
+    }
+    h1 img {
+      vertical-align: -4px;
+    }
+    small {
+      font-size: 0.75em;
+      font-weight: normal;
+    }
+    #game {
+      display: inline-block;
+      width: 60%;
+      height: 400px;
+      vertical-align: top;
+      margin-right: 10px;
+    }
+    #game-data {
+      display: inline-block;
+      vertical-align: top;
+      width: 20%;
+    }
+    #game-data h2 {
+      margin: 0;
+    }
+    a:visited {
+      color: blue;
     }
   </style>
 </head>
 <body>
-  <img src="/lua/gfx/imgfont.png">
-  <img src="/lua/gfx/splash.png">
-  <img src="/lua/gfx/sprites.png">
-  <img src="/lua/gfx/terrain.png">
-  <img src="/lua/gfx/trains.png">
-  <script src="./js/amore.js"></script>
+  <h1><img src="./losermono_icon.png" />loser.land <small>web player</small></h1>
+  <div>
+    <iframe id="game" src="./container.html"></iframe>
+    <div id="game-data">
+      <h2>Djarlum <small>by <a href="http://qwook.github.io/">qwook</a></small></h2>
+      <p>Controls: arrow keys to move, space to shoot/start</p>
+    </div>
+  </div>
 </body>
 </html>

@@ -16,10 +16,8 @@ class Font
     if !@size?
       @size = @filename
       @filename = "Vera"
-    console.log(@filename, @size)
     @html_code = "#{@size}px '#{@filename}'"
     @height = determineFontHeight(@html_code)
-    console.log(@height)
 
   getAscent: (self) ->
   getBaseline: (self) ->

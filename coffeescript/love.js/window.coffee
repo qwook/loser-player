@@ -21,10 +21,10 @@ class Window
   getTitle: () =>
 
   getHeight: () =>
-    @graphics.canvas.height
+    @graphics.canvas.getHeight(@graphics.canvas)
 
   getWidth: () =>
-    @graphics.canvas.width
+    @graphics.canvas.getWidth(@graphics.canvas)
 
   hasFocus: () =>
 

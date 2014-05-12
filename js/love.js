@@ -336,11 +336,11 @@
     };
 
     Canvas.prototype.getDimensions = function(self) {
-      return [self.width, self.height];
+      return [self.getHeight(self), self.getWidth(self)];
     };
 
     Canvas.prototype.getHeight = function(self) {
-      return self.height;
+      return self.element.height;
     };
 
     Canvas.prototype.getImageData = function(self) {
@@ -356,7 +356,7 @@
     };
 
     Canvas.prototype.getWidth = function(self) {
-      return self.width;
+      return self.element.width;
     };
 
     Canvas.prototype.getWrap = function(self) {};
@@ -389,8 +389,18 @@
     Canvas.prototype.setDimensions = function(width, height) {
       this.width = width;
       this.height = height;
-      this.element.setAttribute('width', width + "px");
-      return this.element.setAttribute('height', height + "px");
+      if (!isNaN(this.width, this.height)) {
+        this.element.setAttribute('width', width + "px");
+        return this.element.setAttribute('height', height + "px");
+      }
+    };
+
+    Canvas.prototype.getDesiredHeight = function() {
+      return this.height;
+    };
+
+    Canvas.prototype.getDesiredWidth = function() {
+      return this.width;
     };
 
     return Canvas;
@@ -420,10 +430,8 @@
         this.size = this.filename;
         this.filename = "Vera";
       }
-      console.log(this.filename, this.size);
       this.html_code = "" + this.size + "px '" + this.filename + "'";
       this.height = determineFontHeight(this.html_code);
-      console.log(this.height);
     }
 
     Font.prototype.getAscent = function(self) {};
@@ -562,6 +570,7 @@
       this.canvas = new Canvas(this.width, this.height);
       document.body.appendChild(this.canvas.element);
       this.context = this.canvas.context;
+      this.canvas.element.id = "main";
       this.default_canvas = this.canvas;
       this.default_context = this.context;
       this.default_font = new Font("Vera", 12);
@@ -778,11 +787,11 @@
     };
 
     Graphics.prototype.getWidth = function() {
-      return this.default_canvas.width;
+      return this.default_canvas.getWidth(this.default_canvas);
     };
 
     Graphics.prototype.getHeight = function() {
-      return this.default_canvas.height;
+      return this.default_canvas.getHeight(this.default_canvas);
     };
 
     drawDrawable = function(drawable, x, y, r, sx, sy, ox, oy, kx, ky) {
@@ -1220,11 +1229,11 @@
     Window.prototype.getTitle = function() {};
 
     Window.prototype.getHeight = function() {
-      return this.graphics.canvas.height;
+      return this.graphics.canvas.getHeight(this.graphics.canvas);
     };
 
     Window.prototype.getWidth = function() {
-      return this.graphics.canvas.width;
+      return this.graphics.canvas.getWidth(this.graphics.canvas);
     };
 
     Window.prototype.hasFocus = function() {};
