@@ -1,7 +1,7 @@
-moonshine-love2d
+loser-player
 ================
 
-An attempt to replicate the Love2D API in the browser using moonshine.
+Modification of moonshine-love2d to play in http://loser.land/ player.
 
 # Get This Running
 
