@@ -1,369 +1,456 @@
-require("lua.table-save")
-require("lua.player")
-require("lua.cloud")
-require("lua.train")
-require("lua.tunnel")
-require("lua.gorge")
-require("lua.bird")
-require("lua.terrain")
-require("lua.menu")
 
-WIDTH = 300
-HEIGHT = 100
-SCALE = 3
+local logo = [[
+  ########################################################
+##      ####    ####  ####    ####  ####  ##  ##  ######  ##
+##        ##    ##      ##      ##  ####  ##  ##    ##    ##
+##  ####  ####  ##  ##  ##  ##  ##  ####  ##  ##          ##
+##  ####  ####  ##      ##    ####    ##      ##  ####    ##
+##        ##    ##  ##  ##  ##  ##    ##      ##  ####    ##
+  ########################################################
+]]
 
-bgcolor = {236,243,201,255}
-darkcolor = {2,9,4,255}
+-- this isn't my best code... at all
 
-TRACK_SPEED = 150
+local enemies = require("enemies")
+local font = require("font")
 
-SPEED_INCREASE = 0.04
-START_SPEED = 1.7
-MAX_SPEED = 2.5
+local canvas = love.graphics.newCanvas(32, 32)
+canvas:setFilter('nearest', 'nearest')
 
-pause = false
-mute = false
-gamestate = 1
-selection = 0
-submenu = 0
+local scrW = love.graphics.getWidth()
+local scrH = love.graphics.getHeight()
 
-highscore = {0,0,0}
-difficulty = 1
-difficulty_settings = {{1.5,0.03,2.5},{1.7,0.04,2.5},{2.25,0.06,3.1}}
+-- heh
+function drawString(str, offsetX, offsetY)
+    local y = 0
+    str:gsub("[^\n]+",
+        function(match)
+            local data = {}
+            for x = 0, match:len()/2-1 do
+                if (match:sub(x*2+1, x*2+1) ~= " ") then
+                    love.graphics.rectangle('fill', x + offsetX, y + offsetY, 1, 1);
+                end
+            end
+            y = y + 1
+        end)
+end
 
-use_music = true
+function printString(str, x, y)
+    for i = 1, str:len() do
+        local char = str:sub(i, i)
+        local id = tonumber(char)
+        drawString(font[id], x + (i-1) * 4, y)
+    end
+end
+
+local ticks = 0
+local state = "menu"
+
+-- player stuff
+local lastPlayerX = 0
+local lastPlayerY = 0
+local playerX = 16
+local playerY = 32-4
+local playerVelX = 0
+local playerVelY = 0
+local playerMass = 10
+local playerBullets = {}
+local nextStopAttack = 0
+local nextAttack = 0
+
+-- misc particles
+local trail = {}
+local nextTrail = 0
+local starDust = {}
+local nextStarDust = 0
+
+-- enemy stuff
+local enemyList = {}
+local nextEnemySpawn = 0
+local maxEnemySpawn = 3
+local enemySpawned = 0
+local nextEnemyReload = 0
+local enemyType = 0
+
+local deadEnemies = {}
+local deadBullets = {}
+
+-- menu state stuff
+local menuTransition = 0
+
+function initialize()
+    math.randomseed(os.time())
+    starDust = {}
+    for i = 1, 20 do
+        table.insert(starDust, {x=math.floor(math.random(0, 32)), y=math.floor(math.random(0, 32))})
+    end
+end
+
+function startGame()
+    state = "game"
+
+    -- player stuff
+    lastPlayerX = 0
+    lastPlayerY = 0
+    playerX = 16
+    playerY = 32-4
+    playerVelX = 0
+    playerVelY = 0
+    playerMass = 10
+    playerBullets = {}
+    nextStopAttack = 0
+    nextAttack = 0
+
+    -- misc particles
+    trail = {}
+    nextTrail = 0
+    nextStarDust = 0
+
+    -- enemy stuff
+    enemyList = {}
+    nextEnemySpawn = 0
+    maxEnemySpawn = 3
+    enemySpawned = 0
+    nextEnemyReload = 0
+    enemyType = 0
+end
 
 function love.load()
-	math.randomseed(os.time())
-	love.graphics.drawq = love.graphics.draw
-	love.graphics.setBackgroundColor(bgcolor)
-
-	-- loadstring isn't working right now so loadhighscore is disabled
-	-- loadHighscore()
-	loadResources()
-	love.graphics.setFont(imgfont)
-
-	pl = Player.create()
-	updateScale()
-	restart()
-end
-
-function restart()
-	pl:reset()
-	clouds = {}
-	next_cloud = 0
-	birds = {}
-	next_bird = 1
-	track_frame = 0
-	scrn_shake = 0
-
-	START_SPEED = difficulty_settings[difficulty][1]
-	SPEED_INCREASE = difficulty_settings[difficulty][2]
-	MAX_SPEED = difficulty_settings[difficulty][3]
-	global_speed = START_SPEED
-
-	train = Train.create()
-	train.alive = false
-	tunnel = Tunnel.create()
-	tunnel.alive = false
-	gorge = Gorge.create()
-	gorge.alive = false
-
-	score = 0
-	coffee = 0
-end
-
-function love.update(dt)
-	if gamestate == 0 then
-		updateGame(dt)
-	elseif gamestate == 1 then
-		updateMenu(dt)
-	end
-end
-
-function updateGame(dt)
-	if pause == true then
-		return
-	end
-	-- Update screenshake thingy
-	if scrn_shake > 0 then
-		scrn_shake = scrn_shake - dt
-	end
-
-	-- Update player
-	pl:update(dt)
-
-	-- Update clouds
-	spawnClouds(dt)
-	for i,cl in ipairs(clouds) do
-		cl:update(dt)
-		if cl.x < -32 then
-			table.remove(clouds,i)
-		end
-	end
-
-	-- Update trains
-	train:update(dt)
-
-	-- Update tunnel
-	tunnel:update(dt)
-
-	-- Update gorge
-	gorge:update(dt)
-
-	-- Update birds
-	spawnBirds(dt)
-	for i,b in ipairs(birds) do
-		b:update(dt)
-		if b.alive == false then
-			table.remove(birds,i)
-		end
-	end
-
-	-- Check collisions
-	if pl.alive == true then
-		pl:collideWithTrain()
-		pl:collideWithTunnel()
-		pl:collideWithBirds()
-		pl:collideWithGorge()
-	end
-
-	-- Move railway tracks
-	updateTracks(dt)
-
-	-- Update terrain (skyscrapers etc.)
-	updateTerrain(dt)
-
-	-- Increase speed and score
-	--if pl.status == 0 or pl.status == 3 then
-	if pl.alive == true then
-		global_speed = global_speed + SPEED_INCREASE*dt
-		if global_speed > MAX_SPEED then global_speed = MAX_SPEED end
-		score = score + 20*dt
-	end
-
-	-- Respawn train or tunnel
-	if train.alive == false then
-		if tunnel.alive == false then
-			if gorge.alive == false then
-				local banana = math.random(1,5)
-				if banana == 1 then -- spawn tunnel
-					tunnel = Tunnel.create()
-				elseif banana == 2 and global_speed > 1.7 then
-					gorge = Gorge.create()
-				else
-					train = Train.createRandom()
-				end
-			end
-		else
-			if tunnel.x > WIDTH then
-				train = Train.create(2)
-				train.x = tunnel.x + math.random(1,250) - (tunnel.x - WIDTH)
-			end
-		end
-	end
+    initialize()
 end
 
 function love.draw()
-	love.graphics.scale(SCALE,SCALE)
-	love.graphics.setColor(255,255,255,255)
-	if gamestate == 0 then
-		drawGame()
-	elseif gamestate == 1 then
-		drawMenu()
-	end
+    love.graphics.setColor(255, 255, 255)
+    love.graphics.draw(canvas, 0, 0, 0, scrH/32, scrH/32)
 end
 
-function drawGame()
-	-- Shake camera if hit
-	if scrn_shake > 0 then
-		love.graphics.translate(5*(math.random()-0.5),5*(math.random()-0.5))
-	end
+function draw()
+    love.graphics.setCanvas(canvas)
+        love.graphics.clear()
 
-	-- Draw terrain (skyscrapers etc.)
-	drawTerrain()
+        if state == "menu" then
+            for i = 1, 20 do
+                local col =  i * 4
+                love.graphics.setColor(col, col, col)
+                local r = (math.cos(ticks/100)+1)/2*255
+                local g = (math.sin(ticks/100)+1)/2*255
+                local b = ((math.cos(ticks/100)+1)/2) * ((math.cos(ticks/100)+1)/2) * 255
+                love.graphics.setColor(col, col, col)
+                love.graphics.setColor((r + i*4)*0.25, (g + i*4)*0.25, (b + i*4)*0.25)
+                love.graphics.circle('fill', playerX, playerY, (20-i+1)*6, (20-i+1)*12)
+            end
 
-	-- Draw clouds
-	for i,cl in ipairs(clouds) do
-		cl:draw()
-	end
+            -- draw fucking stars
+            for i, v in pairs(starDust) do
+                love.graphics.setColor(255, 255, 255, (math.cos(ticks/20 + v.x + v.y)+1)/2 * 100+5)
+                love.graphics.rectangle('fill', v.x, v.y, 1, 1)
+            end
 
-	-- Draw back of tunnel
-	tunnel:drawBack()
+            -- logo!
+            if menuTransition > 0 then
+                love.graphics.setColor(0, 0, 0, 100 * (1-menuTransition))
+                drawString(logo, 1, 5)
+                love.graphics.setColor(255, 255, 255, 200 * (1-menuTransition))
+                drawString(logo, 1, 4)
+            else
+                love.graphics.setColor(0, 0, 0, 100)
+                drawString(logo, 1, 5)
+                love.graphics.setColor(255, 255, 255, 200)
+                drawString(logo, 1, 4)
+            end
+        elseif state == "game" then
+            for i, v in pairs(trail) do
+                local col =  i * 4
+                love.graphics.setColor(col, col, col)
+                local r = (math.cos(ticks/100)+1)/2*255
+                local g = (math.sin(ticks/100)+1)/2*255
+                local b = ((math.cos(ticks/100)+1)/2) * ((math.cos(ticks/100)+1)/2) * 255
+                love.graphics.setColor(col, col, col)
+                love.graphics.setColor((r + i*4)*0.25, (g + i*4)*0.25, (b + i*4)*0.25)
+                love.graphics.setColor((r + i*4), (g + i*4), (b + i*4))
+                love.graphics.circle('fill', v.x, v.y, (#trail-i+1)*6, (#trail-i+1)*12)
+            end
 
-	-- Draw railroad tracks
-	drawTracks()
+            -- draw fucking stars
+            for i, v in pairs(starDust) do
+                love.graphics.setColor(255, 255, 255, 5)
+                love.graphics.rectangle('fill', v.x, v.y-3, 1, 3)
+                love.graphics.setColor(255, 255, 255, 50)
+                love.graphics.rectangle('fill', v.x, v.y, 1, 1)
+            end
 
-	-- Draw gorge
-	gorge:draw()
+            love.graphics.setColor(255, 255, 255, 10)
+            love.graphics.rectangle('fill', lastPlayerX, lastPlayerY, 1, 1)
+            love.graphics.setColor(255, 255, 255)
+            love.graphics.rectangle('fill', playerX, playerY, 1, 1)
 
-	-- Draw train
-	train:draw()
+            -- firing, draw muzzleflash
+            if (love.keyboard.isDown(" ")) then
+                local a = (math.cos(ticks)+1)/2*255
+                if a < 100 then a = 0 end
+                love.graphics.setColor(255, 255, 0, a*0.5)
+                love.graphics.rectangle('fill', playerX-1, playerY-1, 3, 1)
+                love.graphics.setColor(255, 255, 255, a)
+                love.graphics.rectangle('fill', playerX, playerY-1, 1, 1)
+                love.graphics.setColor(255, 255, 0, a*0.25)
+                love.graphics.circle('fill', playerX, playerY, 10, 20)
+            end
 
-	-- Draw player
-	love.graphics.setColor(255,255,255,255)
-	pl:draw()
+            -- draw bullet
+            for k, v in pairs(playerBullets) do
+                local col = math.floor((math.cos(ticks-v.id)+1)/2*4)
+                if (col == 0) then
+                    love.graphics.setColor(255, 255, 255)
+                elseif (col == 1) then
+                    love.graphics.setColor(255, 0, 0, 100)
+                elseif (col == 3) then
+                    love.graphics.setColor(255, 255, 0, 100)
+                else
+                    love.graphics.setColor(0, 0, 255, 100)
+                end
+                love.graphics.rectangle('fill', v.x, v.y, 1, 1)
+            end
 
-	-- Draw front of tunnel
-	tunnel:drawFront()
+            -- draw enemies (EVIL!)
+            -- love.graphics.setColor(255, (math.cos(ticks/2) + 1) * 100, 0, 255)
+            love.graphics.setColor(255, 200, 0, 255)
+            -- love.graphics.setBlendMode('subtractive')
+            for k, v in pairs(enemyList) do
+                love.graphics.rectangle('fill', v.x, v.y, 1, 1)
+            end
+            -- love.graphics.setBlendMode('alpha')
 
-	-- Draw birds
-	for i,b in ipairs(birds) do
-		b:draw(v)
-	end
+            love.graphics.setColor(255, 255, 255, 100)
+            -- drawEnemy(enemies[3])
 
-	-- Draw score
-	love.graphics.setColor(darkcolor)
-	love.graphics.print(math.floor(score),8,8)
+            love.graphics.setColor(255, 255, 255)
+            printString("185820", 1, 1)
+        end
 
-	-- Draw game over message
-	if pl.alive == false then
-		love.graphics.printf("you didn't make it to work\npress r to retry",0,30,WIDTH,"center")
-		love.graphics.printf("your score: ".. score .. " - highscore: " .. highscore[difficulty],0,65,WIDTH,"center")
-	end
-
-	-- Draw pause message
-	if pause == true then
-		love.graphics.printf("paused\npress p to continue",0,50,WIDTH,"center")
-	end
-
-	-- Draw coffee meter
-	local cquad = love.graphics.newQuad(48+math.floor(coffee)*9,64,9,9,128,128)
-	if coffee < 5 or pl.frame < 4 then
-		love.graphics.drawq(imgSprites,cquad,284,7)
-	end
+    love.graphics.setCanvas()
 end
 
-function love.keypressed(key,unicode)
-	if key == ' ' then -- will be space most of the time
-		return         -- avoid unnecessary checks
-	elseif key == 'r' then
-		restart()
-	elseif key == 'up' then
-		selection = selection-1
-	elseif key == 'down' then
-		selection = selection+1
-
-	elseif key == 'return' then
-		if gamestate == 1 then
-			if submenu == 0 then -- splash screen
-				submenu = 2 -- Jumps straight to difficulty.
-				auSelect:stop() auSelect:play()
-			elseif submenu == 2 then  -- difficulty selection
-				difficulty = selection+1
-				auSelect:stop() auSelect:play()
-				gamestate = 0
-				restart()
-			end
-		end
-
-	elseif key == 'escape' then
-		if gamestate == 0 then -- ingame
-			gamestate = 1
-			submenu = 2
-			selection = 0
-		elseif gamestate == 1 then
-			if submenu == 0 then
-				love.event.quit()
-			elseif submenu == 2 then
-				submenu = 0
-			end
-		end
-		auSelect:stop() auSelect:play()
-	elseif key == 'p' then
-		if gamestate == 0 and pl.alive == true then
-			pause = not pause
-		end
-	elseif key == 'm' then
-		if mute == false then
-			mute = true
-			love.audio.setVolume(0.0)
-		else
-			mute = false
-			love.audio.setVolume(1.0)
-		end
-	elseif key == '1' then
-		SCALE = 1
-		updateScale()
-	elseif key == '2' then
-		SCALE = 2
-		updateScale()
-	elseif key == '3' then
-		SCALE = 3
-		updateScale()
-	elseif key == '4' then
-		SCALE = 4
-		updateScale()
-	end
+local rate = 1 / 60
+local time = 0
+function love.update(dt)
+    time = time + dt
+    if time > rate then
+        for i = 1, math.min(math.floor(time / rate), 5) do
+            tick()
+        end
+        time = time - (math.floor(time / rate) * rate)
+        draw()
+    end
 end
 
-function updateScale()
-	SCRNWIDTH = WIDTH*SCALE
-	SCRNHEIGHT = HEIGHT*SCALE
-	love.window.setMode(SCRNWIDTH,SCRNHEIGHT)
+function tick()
+    ticks = ticks + 1
+
+
+    if state == "menu" then
+        if (love.keyboard.isDown(" ")) and menuTransition == 0 then
+            menuTransition = 0.01
+        end
+
+        if (menuTransition > 0) then
+
+            -- fucking sparkles
+            if (ticks > nextStarDust) then
+                table.insert(starDust, {x=math.floor(math.random(0, 32)),y=0})
+                if (#starDust > 5) then
+                    table.remove(starDust, 1)
+                end
+                nextStarDust = ticks + 10
+            end
+            for k, v in pairs(starDust) do
+                v.y = v.y + menuTransition
+            end
+
+            menuTransition = menuTransition + 0.01
+        end
+
+        if (menuTransition > 1) then
+            startGame()
+        end
+    elseif state == "game" then
+        local forceX = 0
+        local forceY = 0
+        local velocity = math.sqrt(playerVelX*playerVelX+playerVelY*playerVelY)
+        if velocity ~= velocity then
+            velocity = 0
+        end
+
+        if (love.keyboard.isDown("left")) then
+            forceX = forceX - 1
+        elseif (love.keyboard.isDown("right")) then
+            forceX = forceX + 1
+        end
+        if (love.keyboard.isDown("up")) then
+            forceY = forceY - 1
+        elseif (love.keyboard.isDown("down")) then
+            forceY = forceY + 1
+        end
+
+        local force = math.sqrt(forceX*forceX+forceY*forceY)
+        if force ~= force then
+            force = 0
+        end
+
+        if (force > 0) then
+            local nX = forceX / force
+            local nY = forceY / force
+
+            playerVelX = playerVelX + nX/playerMass*0.5
+            playerVelY = playerVelY + nY/playerMass*0.5
+        end
+
+        -- drag
+        if velocity > 0 then
+            local rho = 1.2 -- density of air
+            local cd = 0.5
+            local drag = 0.5*rho*velocity*velocity*cd
+
+            local nVelX = playerVelX / velocity
+            local nVelY = playerVelY / velocity
+
+            playerVelX = playerVelX - nVelX*drag
+            playerVelY = playerVelY - nVelY*drag
+        end
+
+        playerX = playerX + playerVelX
+        playerY = playerY + playerVelY
+
+        if playerX < 0 then
+            playerX = 0
+        elseif playerX >= 31 then
+            playerX = 31
+        end
+        if playerY < 0 then
+            playerY = 0
+        elseif playerY > 31 then
+            playerY = 31
+        end
+
+        if ticks > nextTrail then
+            table.insert(trail, {x=playerX, y=playerY})
+            if (#trail > 10) then
+                table.remove(trail, 1)
+            end
+
+            lastPlayerX = playerX
+            lastPlayerY = playerY
+
+            nextTrail = ticks + 5
+        end
+
+        -- shoot
+        if (love.keyboard.isDown(" ")) then
+            if ticks > nextAttack then
+                table.insert(playerBullets, {x=playerX, y=playerY, id=ticks})
+                nextAttack = ticks + 10
+            end
+        end
+
+        -- spawn enemies
+        if enemySpawned >= maxEnemySpawn then
+            if ticks > nextEnemyReload then
+                enemySpawned = 0
+                nextEnemySpawn = 0
+                enemyType = (enemyType + 1) % #enemies
+            end
+        else
+            local fn = enemies[enemyType + 1]
+            if ticks > nextEnemySpawn then
+                table.insert(enemyList, {x=fn(0), y=0, fn=fn, dead=false})
+                enemySpawned = enemySpawned + 1
+                nextEnemySpawn = ticks + 10
+                nextEnemyReload = ticks + 100
+            end
+        end
+
+        -- manage bullets
+        for k, v in pairs(playerBullets) do
+            v.y = v.y - 1
+
+            for _k, _v in pairs(enemyList) do
+                if math.floor(math.pow(v.x-_v.x, 2) + math.pow(v.y-_v.y, 2)) < 2 and _v.dead ~= true then
+                    _v.dead = true
+                    table.insert(deadBullets, v)
+                    break
+                end
+            end
+
+            if v.y < 0 then
+                table.insert(deadBullets, v)
+            end
+        end
+
+        -- clean up dead bullets
+        local i = 1
+        while (i <= #playerBullets) do
+            for k, deadBullet in pairs(deadBullets) do
+                if (playerBullets[i] == deadBullet) then
+                    table.remove(playerBullets, i)
+                    table.remove(deadBullets, k)
+                    i = i - 1
+                    break
+                end
+            end
+            i = i + 1
+        end
+
+
+        -- manage enemies
+        for k, v in pairs(enemyList) do
+            local speed = v.fn(0, 1)
+            v.y = v.y + speed
+            if v.y > 32 or v.dead == true then
+                table.insert(deadEnemies, v)
+            else
+                v.x = v.fn(v.y)
+            end
+        end
+
+        -- clean up dead enemies
+        local i = 1
+        while (i <= #enemyList) do
+            for k, deadEnemy in pairs(deadEnemies) do
+                if (enemyList[i] == deadEnemy) then
+                    table.remove(enemyList, i)
+                    table.remove(deadEnemies, k)
+                    i = i - 1
+                    break
+                end
+            end
+            i = i + 1
+        end
+
+        -- fucking sparkles
+        if (ticks > nextStarDust) then
+            table.insert(starDust, {x=math.floor(math.random(0, 32)),y=0})
+            if (#starDust > 5) then
+                table.remove(starDust, 1)
+            end
+            nextStarDust = ticks + 5
+        end
+        for k, v in pairs(starDust) do
+            v.y = v.y + 1
+        end
+    end
 end
 
-function loadResources()
-	-- Load images
-	imgSprites = love.graphics.newImage("gfx/sprites.png")
-	imgSprites:setFilter("nearest","nearest")
-
-	imgTrains = love.graphics.newImage("gfx/trains.png")
-	imgTrains:setFilter("nearest","nearest")
-
-	imgTerrain = love.graphics.newImage("gfx/terrain.png")
-	imgTerrain:setFilter("nearest","nearest")
-
-	imgSplash = love.graphics.newImage("gfx/splash.png")
-	imgSplash:setFilter("nearest","nearest")
-
-	-- fontimg = love.graphics.newImage("gfx/imgfont.png")
-	-- fontimg:setFilter("nearest","nearest")
-	-- imgfont = love.graphics.newImageFont(fontimg," abcdefghijklmnopqrstuvwxyz0123456789.!'-:*")
-	-- imgfont:setLineHeight(2)
-	imgfont = love.graphics.newFont()
-
-	-- Load sound effects
-	auCoffee = love.audio.newSource("sfx/coffee.wav","static")
-	auHit = love.audio.newSource("sfx/hit.wav","static")
-	auSelect = love.audio.newSource("sfx/select.wav","static")
-	if use_music == true then
-		auBGM = love.audio.newSource("sfx/bgm.ogg","stream")
-		auBGM:setLooping(true)
-		auBGM:setVolume(0.6)
-		auBGM:play()
-	end
+function love.keypressed(key, isrepeat)
 end
 
-function loadHighscore()
-	if love.filesystem.exists("highscore") then
-		local data = love.filesystem.read("highscore")
-		if data ~=nil then
-			local datatable = table.load(data)
-			if #datatable == #highscore then
-				highscore = datatable
-			end
-		end
-	end
+function love.keyreleased(key)
 end
 
-function saveHighscore()
-	local datatable = table.save(highscore)
-	love.filesystem.write("highscore",datatable)
+function drawEnemy(enemy)
+    local points = {}
+    for y = 1, 32 do
+        local x = enemy(y)
+        table.insert(points, x)
+        table.insert(points, y)
+    end
+    love.graphics.line(points)
 end
-
-function love.quit()
-	saveHighscore()
-end
-
-function love.focus(f)
-	if not f and gamestate == 0 and pl.alive == true then
-		pause = true
-	end
-end
-
---[[
-  Gamestates:
-  0 ingame
-  1 menu
---]]
