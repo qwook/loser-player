@@ -1,8 +1,12 @@
 class Canvas
-  constructor: (width, height) ->
+  constructor: (@width = 640, @height = 480) ->
     @element = document.createElement('canvas')
     this.setDimensions(@width, @height)
     @context = @element.getContext('2d')
+
+    @context.imageSmoothingEnabled = false;
+    @context.mozImageSmoothingEnabled = false;
+    @context.webkitImageSmoothingEnabled = false;
 
   clear: (self, r, g, b, a) ->
     if r == null or r == undefined
@@ -39,6 +43,10 @@ class Canvas
 
   setWrap: (self) ->
 
+  getFilter: (self) ->
+
+  setFilter: (self) ->
+
   # PRIVATE
   copyContext: (context) ->
     @context.fillStyle = context.fillStyle
@@ -59,7 +67,7 @@ class Canvas
     @context.textBaseline = context.textBaseline
 
   setDimensions: (@width, @height) ->
-    @element.setAttribute('width', @width)
-    @element.setAttribute('height', @height)
+    @element.setAttribute('width', width + "px")
+    @element.setAttribute('height', height + "px")
 
 Canvas.transparent = new Color(0, 0, 0, 0)
