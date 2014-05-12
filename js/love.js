@@ -409,7 +409,6 @@
 
   Canvas.transparent = new Color(0, 0, 0, 0);
 
-<<<<<<< HEAD
   determineFontHeight = function(fontStyle) {
     var body, dummy, dummyText, result;
     body = document.getElementsByTagName("body")[0];
@@ -423,22 +422,16 @@
     return result;
   };
 
-=======
->>>>>>> 0ea531722696ca2571167b2a2789c741e71870d0
   Font = (function() {
     function Font(filename, size) {
       this.filename = filename;
       this.size = size;
-<<<<<<< HEAD
       if (this.size == null) {
         this.size = this.filename;
         this.filename = "Vera";
       }
       this.html_code = "" + this.size + "px '" + this.filename + "'";
       this.height = determineFontHeight(this.html_code);
-=======
-      this.html_code = "" + this.size + "px " + this.filename;
->>>>>>> 0ea531722696ca2571167b2a2789c741e71870d0
     }
 
     Font.prototype.getAscent = function(self) {};
@@ -449,13 +442,9 @@
 
     Font.prototype.getFilter = function(self) {};
 
-<<<<<<< HEAD
     Font.prototype.getHeight = function(self) {
       return this.height;
     };
-=======
-    Font.prototype.getHeight = function(self) {};
->>>>>>> 0ea531722696ca2571167b2a2789c741e71870d0
 
     Font.prototype.getLineHeight = function(self) {};
 
@@ -896,7 +885,6 @@
 
     function Keyboard(eventQueue) {
       this.isDown = __bind(this.isDown, this);
-<<<<<<< HEAD
       var _this = this;
       this.keysDown = {};
       document.addEventListener("keydown", function(evt) {
@@ -915,29 +903,6 @@
         _this.keysDown[key] = false;
         return eventQueue.push("keyreleased", key, evt.which);
       });
-=======
-      this.keysDown = {};
-      document.addEventListener("keydown", (function(_this) {
-        return function(evt) {
-          var key;
-          evt.preventDefault();
-          evt.stopPropagation();
-          key = getKeyFromEvent(evt);
-          _this.keysDown[key] = true;
-          return eventQueue.push("keypressed", key, evt.which);
-        };
-      })(this));
-      document.addEventListener("keyup", (function(_this) {
-        return function(evt) {
-          var key;
-          evt.preventDefault();
-          evt.stopPropagation();
-          key = getKeyFromEvent(evt);
-          _this.keysDown[key] = false;
-          return eventQueue.push("keyreleased", key, evt.which);
-        };
-      })(this));
->>>>>>> 0ea531722696ca2571167b2a2789c741e71870d0
     }
 
     Keyboard.prototype.isDown = function() {
@@ -1088,17 +1053,13 @@
   this.Love = (function() {
     function Love(window_conf) {
       this.run = __bind(this.run, this);
-<<<<<<< HEAD
       var _this = this;
-=======
->>>>>>> 0ea531722696ca2571167b2a2789c741e71870d0
       this.graphics = new Graphics(window_conf.width, window_conf.height);
       this.window = new Window(this.graphics);
       this.timer = new Timer();
       this.event = new EventQueue();
       this.keyboard = new Keyboard(this.event);
       this.filesystem = new FileSystem();
-<<<<<<< HEAD
       this.audio = new Audio();
       window.addEventListener("beforeunload", function() {
         return _this.quit.call();
@@ -1125,31 +1086,6 @@
         _this.draw.call();
         return _this.timer.nextFrame(game_loop);
       };
-=======
-    }
-
-    Love.prototype.run = function() {
-      var game_loop;
-      this.timer.step();
-      this.load.call();
-      game_loop = (function(_this) {
-        return function() {
-          var e, _i, _len, _ref;
-          _ref = _this.event.internalQueue;
-          for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-            e = _ref[_i];
-            _this[e.eventType].call(null, e.arg1, e.arg2, e.arg3, e.arg4);
-          }
-          _this.event.clear();
-          _this.timer.step();
-          _this.update.call(null, _this.timer.getDelta());
-          _this.graphics.origin();
-          _this.graphics.clear();
-          _this.draw.call();
-          return _this.timer.nextFrame(game_loop);
-        };
-      })(this);
->>>>>>> 0ea531722696ca2571167b2a2789c741e71870d0
       return this.timer.nextFrame(game_loop);
     };
 
